@@ -16,14 +16,12 @@ const dataStorageGet = (key) => {
   return JSON.parse(localStorage.getItem(key));
 };
 
-const dataStorageFilter = (filter) => {
+const dataStorageGetAll = () => {
   const notes = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     const note = JSON.parse(localStorage.getItem(key));
-    if (filter(note)) {
-      notes.push(note);
-    }
+    notes.push(note);
   }
   return notes;
 };
@@ -36,15 +34,7 @@ const dataStorageRemove = (key) => {
   localStorage.removeItem(key);
 };
 
-const dataStoragePush = (note) => {
-  note.id = Date.now();
-  localStorage.setItem(note.id, JSON.stringify(note));
-  return note;
-};
-
-//note control
-
-const endNote = (notes) => {
+const endNumberStorage = (notes) => {
   if (notes.length > 1) {
     let biggerNumber = notes[0].number;
     notes.forEach((note) => {
@@ -55,13 +45,26 @@ const endNote = (notes) => {
   return 0;
 };
 
+const dataStoragePush = (note) => {
+  const notes = dataStorageGetAll();
+  const endNumberNote = endNumberStorage(notes);
+  note.id = Date.now();
+  note.number = endNumberNote + 1;
+  localStorage.setItem(note.id, JSON.stringify(note));
+  return note;
+};
+
+//note control
+
 const delateTodo = (buttonDelate) => {
   let todoItem;
   do {
     todoItem = buttonDelate.parentElement;
   } while (todoItem.nodeName != "LI");
   dataStorageRemove(todoItem.dataset.id);
+  listNotes = dataStorageGetAll();
   todoItem.remove();
+  count.textContent = parseInt(count.textContent) - 1;
 };
 
 const paintNotes = () => {
@@ -69,22 +72,34 @@ const paintNotes = () => {
     fragment = document.createDocumentFragment();
   //eliminamos todos las notas anteriores
   while (list.firstChild) list.firstChild.remove();
+
+  //filtramos dependiendo del filterSelect
+  if (filterSelect == "all" || filterSelect == "") {
+    listNot = listNotes.filter(() => true)
+  } else if (filterSelect == "active") {
+    listNot = listNotes.filter( note => !note.complete)
+  } else if (filterSelect == "completed") {
+    listNot = listNotes.filter( note => note.complete)
+  }
+
   //ordenamos la lista
-  const noteList = listNotes.sort((a, b) => (a.number > b.number ? -1 : 1));
+  const noteList = listNot.sort((a, b) => (a.number > b.number ? -1 : 1));
+
   //procedemos a crear cada nota
   noteList.forEach((note) => {
-    const clone = document.importNode(element.content, true);
-    const li = clone.querySelector("li");
-    const text = li.querySelector(".todo-note__text");
+    const clone = document.importNode(element.content, true),
+      li = clone.querySelector("li"),
+      text = li.querySelector(".todo-note__text");
     li.setAttribute("data-id", note.id);
     changeStateElement(li, note.complete);
     text.textContent = note.text;
     fragment.appendChild(clone);
   });
   //mostramos la cantidad de notas
-  count.textContent = listNotes.length;
+  count.textContent = noteList.length;
   //insertamos el fragment
   list.appendChild(fragment);
+  console.log('se pintaron')
 };
 
 const changeStateElement = (elementNote, state) => {
@@ -102,38 +117,24 @@ const changeStateElement = (elementNote, state) => {
 //creacion de una nota
 form.addEventListener("submit", (e) => {
   e.preventDefault();
-  const nots = dataStorageFilter(() => true);
-  const endNumberNote = endNote(nots);
   const note = {
-    number: endNumberNote + 1,
     complete: inputComplete.checked,
     text: inputText.value,
   };
   dataStoragePush(note);
-  if (filterSelect == "all" || filterSelect == "") {
-    listNotes = dataStorageFilter(() => true);
-  } else if (filterSelect == "active") {
-    listNotes = dataStorageFilter((note) => !note.complete);
-  } else if (filterSelect == "completed") {
-    listNotes = dataStorageFilter((note) => note.complete);
-  }
+  listNotes = dataStorageGetAll();
   form.reset();
   paintNotes();
 });
 
 //cargamos las notas
 document.addEventListener("DOMContentLoaded", (e) => {
+  //guardamos las notas del storage en el listNotes;
+  listNotes = dataStorageGetAll();
   let hash = location.hash.replace("#", "");
-  if (hash == "all" || hash == "") {
-    listNotes = dataStorageFilter(() => true);
-    changeOption("all");
-  } else if (hash == "active") {
-    listNotes = dataStorageFilter((note) => !note.complete);
-    changeOption("active");
-  } else if (hash == "completed") {
-    listNotes = dataStorageFilter((note) => note.complete);
-    changeOption("completed");
-  }
+  if (hash == '') 
+    hash = 'all';
+  changeFilterNotes(hash)
   paintNotes();
 });
 
@@ -153,6 +154,7 @@ list.addEventListener("click", (e) => {
       const state = note.complete;
       note.complete = !state;
       dataStorageSet(note.id, note);
+      listNotes = dataStorageGetAll();
       changeStateElement(todoItem, note.complete);
     } else {
       buttonChek = buttonChek.parentElement;
@@ -165,6 +167,7 @@ list.addEventListener("click", (e) => {
         const state = note.complete;
         note.complete = !state;
         dataStorageSet(note.id, note);
+        listNotes = dataStorageGetAll();
         changeStateElement(todoItem, note.complete);
       }
     }
@@ -173,32 +176,22 @@ list.addEventListener("click", (e) => {
 
 // control menu
 
-const changeOption = (option) => {
-  filterSelect = option;
-  optionAll.classList.toggle("todo-main__option--select", option == "all");
-  optionActive.classList.toggle(
-    "todo-main__option--select",
-    option == "active"
-  );
-  optionCompleted.classList.toggle(
-    "todo-main__option--select",
-    option == "completed"
-  );
+const changeFilterNotes = (filter) => {
+  filterSelect = filter;
+  paintNotes();
+  optionAll.classList.toggle("todo-main__option--select", filter == "all");
+  optionActive.classList.toggle("todo-main__option--select",filter == "active");
+  optionCompleted.classList.toggle("todo-main__option--select",filter == "completed");
+  
 };
 optionAll.addEventListener("click", () => {
-  listNotes = dataStorageFilter(() => true);
-  paintNotes();
-  changeOption("all");
+  changeFilterNotes("all");
 });
 optionActive.addEventListener("click", () => {
-  listNotes = dataStorageFilter((note) => !note.complete);
-  paintNotes();
-  changeOption("active");
+  changeFilterNotes("active");
 });
 optionCompleted.addEventListener("click", () => {
-  listNotes = dataStorageFilter((note) => note.complete);
-  paintNotes();
-  changeOption("completed");
+  changeFilterNotes("completed");
 });
 inputComplete.addEventListener("change", () => {
   const label = form.querySelector(".label-chek");
