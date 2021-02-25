@@ -29,16 +29,29 @@ ul{
     height: 50vmin;
     background-repeat: no-repeat;
     background-size: cover;
-    max-height: 300px;
+    max-height:300px;
 }
 .body--light{
     background-color: #F6F6F8;
     --color-menu:hsl(0, 0%, 98%);
+    --color-line:hsl(233, 11%, 84%);
     --color-title: #fff;
     --color-text:hsl(236, 9%, 61%);
     --color-text-select:hsl(220, 98%, 61%);
     --color-text-hover:hsl(235, 19%, 35%);
-    --color-text-crossout:hsl(233, 11%, 84%);
+    --color-text--note:hsl(236, 9%, 61%);
+    --color-text--note-crossout:hsl(233, 11%, 84%);
+}
+.body--dark{
+    background-color: hsl(235, 21%, 11%);
+    --color-menu:hsl(235, 24%, 19%);
+    --color-line:hsl(237, 14%, 26%);
+    --color-title: #fff;
+    --color-text:hsl(234, 11%, 52%);
+    --color-text-select:hsl(220, 98%, 61%);
+    --color-text-hover:hsl(237, 14%, 26%);
+    --color-text--note:hsl(234, 39%, 85%);
+    --color-text--note-crossout:hsl(233, 14%, 35%);
 }
 .body--light::after{ background-image: url('images/bg-mobile-light.jpg');}
 .body--dark::after{ background-image: url('images/bg-mobile-dark.jpg');}
@@ -49,7 +62,8 @@ ul{
     width: 85%;
     max-width: 500px;
     height: 60px;
-    margin: 13vmin auto 16px auto;
+    padding-top: 13vmin;
+    margin: 0px auto 16px auto;
 }
 .header__title{
     font-size: 28px;
@@ -58,19 +72,30 @@ ul{
     text-transform: uppercase;
     color: var(--color-title);
 }
-.button-svg-32{
-    position: relative;
-    height: 32px;
-    overflow: hidden;
-}
-.button__change-div{
-    position: relative;
+.button-change{
     display: flex;
     flex-direction: column;
+    align-items: center;
+    padding: 0px 6px;
+    height: 36px;
+    border-radius: 100px;
+    overflow: hidden;
+    cursor: pointer;
 }
-.button__change-div svg{
-    margin-bottom: 8px;
+.button-change span{
+    margin-top: 6px;
 }
+.button-change span:nth-child(1){
+    animation-duration: 0.3s;
+    animation-fill-mode: forwards;
+}
+.button-change--up span:nth-child(1){
+    animation-name: up;
+}
+.button-change--down span:nth-child(1){
+    animation-name: down;
+}
+
 .main{
     margin: 0px auto;
     width: 85%;
@@ -92,6 +117,11 @@ ul{
     padding-right: 16px;
     flex: 1;
     font-family: inherit;
+    font-size: inherit;
+    color: var(--color-text);
+}
+.form__input-text::placeholder{
+    color: var(--color-text);
 }
 .form-todo__input-none{
     display: none;
@@ -105,7 +135,7 @@ ul{
     border-radius: 100px;
     height: 24px;
     width: 24px;
-    border: 1px solid rgb(230, 230, 230);
+    border: 1px solid var(--color-line);
     cursor: pointer;
 }
 .label-chek{
@@ -117,11 +147,6 @@ ul{
 .label-chek svg,
 .todo-note__chek img {
     display: none;
-}
-.label-chek:hover svg,
-.todo-note__chek:hover svg{
-    display: block;
-    stroke: rgba(255, 255, 255, 0.8);
 }
 .label-chek--completed,
 .todo-note__chek--completed{
@@ -146,10 +171,11 @@ ul{
     align-items: center;
     padding: 0px 16px;
     min-height: 50px;
-    border-bottom: 1px solid rgb(207, 207, 207);
+    border-bottom: 1px solid var(--color-line);
     max-width: 100%;
 }
 .todo-note__chek{
+    background-color: #ffffff00;
     padding: 0px;
     flex: 0 0 auto;
 }
@@ -157,14 +183,14 @@ ul{
     outline: none;
 }
 .todo-note__text{
-    color: hsl(235, 19%, 35%);
+    color: var(--color-text--note);
     margin-left: 8px;
     overflow: hidden;
     flex: 0 1 100%;
 }
 .todo-note__text--completed{
     text-decoration: line-through;
-    color: var(--color-text-crossout);
+    color: var(--color-text--note-crossout);
 }
 .todo-note__delate,
 .todo-main__button{
@@ -220,7 +246,7 @@ ul{
     color: var(--color-text);
     text-decoration: none;
     font-weight: 700;
-    margin: 0px 4px;
+    margin: 0px 8px;
 }
 .todo-main__option:hover{
     color: var(--color-text-hover);
@@ -238,4 +264,34 @@ ul{
 .todo-main__option--select:focus{
     color: var(--color-text-select);
     outline: none;
+}
+
+@media (min-width: 700px){
+    .body--light::after{ background-image: url('images/bg-desktop-light.jpg');}
+    .body--dark::after{ background-image: url('images/bg-desktop-dark.jpg');}
+    .todo-main__filter{
+        top: auto;
+        left: auto;
+        margin: 0px;
+        position: relative;
+        background-color: transparent;
+    }
+}
+
+
+@keyframes up{
+    from{
+        margin-top: 6px;
+    }
+    to{
+        margin-top: calc(-100% - 6px);
+    }
+}
+@keyframes down{
+    from{
+        margin-top: calc(-100% - 6px);
+    }
+    to{
+        margin-top: 6px;
+    }
 }

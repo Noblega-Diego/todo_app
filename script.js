@@ -2,6 +2,7 @@ const list = document.getElementById("list-todo"),
   optionAll = document.getElementById("option-main-all"),
   optionActive = document.getElementById("option-main-active"),
   optionCompleted = document.getElementById("option-main-completed"),
+  clearCompleted = document.getElementById("clearCompleted"),
   form = document.getElementById("form-create-note"),
   inputComplete = document.getElementById("form-complete"),
   inputText = document.getElementById("form-text"),
@@ -12,26 +13,32 @@ let listNotes = [],
   filterSelect = "all";
 
 // manejo del storage
-const dataStorageGet = (key) => {
+const noteStorageGet = (key) => {
   return JSON.parse(localStorage.getItem(key));
 };
 
-const dataStorageGetAll = () => {
-  const notes = [];
+const noteStorageLoad = () => {
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     const note = JSON.parse(localStorage.getItem(key));
-    notes.push(note);
+    listNotes.push(note);
   }
-  return notes;
 };
 
-const dataStorageSet = (key, note) => {
-  localStorage.setItem(key, JSON.stringify(note));
+const noteStorageSet = (note) => {
+  for (let i = 0; i< listNotes.length; i++) {
+    console.log(i);
+      if(listNotes[i].id === note.id){
+        listNotes[i] = note;
+        break;
+      }
+  }
+  localStorage.setItem(note.id, JSON.stringify(note));
 };
 
-const dataStorageRemove = (key) => {
-  localStorage.removeItem(key);
+const noteStorageRemove = (id) => {
+  listNotes = listNotes.filter(n => n.id != id);
+  localStorage.removeItem(id);
 };
 
 const endNumberStorage = (notes) => {
@@ -45,15 +52,26 @@ const endNumberStorage = (notes) => {
   return 0;
 };
 
-const dataStoragePush = (note) => {
-  const notes = dataStorageGetAll();
-  const endNumberNote = endNumberStorage(notes);
-  note.id = Date.now();
-  note.number = endNumberNote + 1;
+const noteStoragePush = (state,text) => {
+  const note  = {
+    id: Date.now(),
+    complete: state,
+    number: endNumberStorage(listNotes),
+    text
+  }
+  listNotes.push(note);
   localStorage.setItem(note.id, JSON.stringify(note));
   return note;
 };
 
+const countNotes = (param) => {
+  let count = 0;
+    listNotes.forEach(note =>{
+      if(param(note))
+        count ++;
+    })
+  return count;
+}
 //note control
 
 const delateTodo = (buttonDelate) => {
@@ -61,10 +79,10 @@ const delateTodo = (buttonDelate) => {
   do {
     todoItem = buttonDelate.parentElement;
   } while (todoItem.nodeName != "LI");
-  dataStorageRemove(todoItem.dataset.id);
-  listNotes = dataStorageGetAll();
+  if(!noteStorageGet(todoItem.dataset.id).complete)
+    count.textContent = parseInt(count.textContent) - 1;
+  noteStorageRemove(todoItem.dataset.id);
   todoItem.remove();
-  count.textContent = parseInt(count.textContent) - 1;
 };
 
 const paintNotes = () => {
@@ -95,8 +113,8 @@ const paintNotes = () => {
     text.textContent = note.text;
     fragment.appendChild(clone);
   });
-  //mostramos la cantidad de notas
-  count.textContent = noteList.length;
+  //mostramos la cantidad de tareas sin completar
+  count.textContent = countNotes((n)=> !n.complete);
   //insertamos el fragment
   list.appendChild(fragment);
   console.log('se pintaron')
@@ -116,21 +134,22 @@ const changeStateElement = (elementNote, state) => {
 
 //creacion de una nota
 form.addEventListener("submit", (e) => {
+  const label = form.querySelector(".label-chek");
   e.preventDefault();
-  const note = {
-    complete: inputComplete.checked,
-    text: inputText.value,
-  };
-  dataStoragePush(note);
-  listNotes = dataStorageGetAll();
+  noteStoragePush(inputComplete.checked,inputText.value);
   form.reset();
+  label.classList.toggle("label-chek--completed", false);
   paintNotes();
 });
 
+inputComplete.addEventListener("change", () => {
+  const label = form.querySelector(".label-chek");
+  label.classList.toggle("label-chek--completed", inputComplete.checked);
+});
 //cargamos las notas
 document.addEventListener("DOMContentLoaded", (e) => {
   //guardamos las notas del storage en el listNotes;
-  listNotes = dataStorageGetAll();
+  noteStorageLoad();
   let hash = location.hash.replace("#", "");
   if (hash == '') 
     hash = 'all';
@@ -150,11 +169,14 @@ list.addEventListener("click", (e) => {
       do {
         todoItem = buttonChek.parentElement;
       } while (todoItem.nodeName != "LI");
-      const note = dataStorageGet(todoItem.dataset.id);
+      const note = noteStorageGet(todoItem.dataset.id);
       const state = note.complete;
       note.complete = !state;
-      dataStorageSet(note.id, note);
-      listNotes = dataStorageGetAll();
+      noteStorageSet(note);
+      if(note.complete)
+          count.textContent = parseInt(count.textContent) - 1; 
+      else
+          count.textContent = parseInt(count.textContent) + 1;
       changeStateElement(todoItem, note.complete);
     } else {
       buttonChek = buttonChek.parentElement;
@@ -163,11 +185,14 @@ list.addEventListener("click", (e) => {
         do {
           todoItem = buttonChek.parentElement;
         } while (todoItem.nodeName != "LI");
-        const note = dataStorageGet(todoItem.dataset.id);
+        const note = noteStorageGet(todoItem.dataset.id);
         const state = note.complete;
         note.complete = !state;
-        dataStorageSet(note.id, note);
-        listNotes = dataStorageGetAll();
+        noteStorageSet(note);
+        if(note.complete)
+          count.textContent = parseInt(count.textContent) - 1; 
+        else
+          count.textContent = parseInt(count.textContent) + 1;
         changeStateElement(todoItem, note.complete);
       }
     }
@@ -182,7 +207,6 @@ const changeFilterNotes = (filter) => {
   optionAll.classList.toggle("todo-main__option--select", filter == "all");
   optionActive.classList.toggle("todo-main__option--select",filter == "active");
   optionCompleted.classList.toggle("todo-main__option--select",filter == "completed");
-  
 };
 optionAll.addEventListener("click", () => {
   changeFilterNotes("all");
@@ -193,10 +217,10 @@ optionActive.addEventListener("click", () => {
 optionCompleted.addEventListener("click", () => {
   changeFilterNotes("completed");
 });
-inputComplete.addEventListener("change", () => {
-  const label = form.querySelector(".label-chek");
-  label.classList.toggle("label-chek--completed", inputComplete.checked);
-});
+
+clearCompleted.addEventListener('click',()=>{
+  
+})
 
 // change color page
 
@@ -205,9 +229,13 @@ buttonColor.addEventListener("click", (e) => {
   const body = document.body;
   const light = body.classList.contains("body--light");
   if (light) {
+    buttonColor.classList.toggle('button-change--down',false);
+    buttonColor.classList.toggle('button-change--up',true);
     body.classList.add("body--dark");
     body.classList.remove("body--light");
   } else {
+    buttonColor.classList.toggle('button-change--down',true);
+    buttonColor.classList.toggle('button-change--up',false);
     body.classList.add("body--light");
     body.classList.remove("body--dark");
   }
