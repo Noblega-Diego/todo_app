@@ -9,58 +9,88 @@ const list = document.getElementById("list-todo"),
   count = document.getElementById("count"),
   buttonColor = document.getElementById("change-color-page");
 let listNotes = [],
-  statePage = false,
+  storageNotes,
+  statePage,
   filterSelect = "all";
 
+
+//delegacion de eventos
+
+
+
 // manejo del storage
+const localStorageManager = (key) =>{
+  let storage = JSON.parse(localStorage.getItem(key));
+  return {
+    data: () => storage,
+    remplace: (d) => {
+      storage = d;
+      console.log('data: ' + storage)
+      localStorage.setItem(key,JSON.stringify(d));
+    }
+  }
+}
+
+
 const noteStorageGet = (key) => {
-  return JSON.parse(localStorage.getItem(key));
+  for (let i = 0; i < listNotes.length; i++) {
+    if(listNotes[i].id == key)
+    return listNotes[i];
+  }
+  return;
 };
 
 const noteStorageLoad = () => {
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    const note = JSON.parse(localStorage.getItem(key));
-    listNotes.push(note);
+  storageNotes = localStorageManager('notes');
+  if(storageNotes.data() == null){
+    listNotes = [];
+    storageNotes.remplace(listNotes);
+  }
+  else{
+    listNotes = storageNotes.data();
   }
 };
 
 const noteStorageSet = (note) => {
   for (let i = 0; i< listNotes.length; i++) {
-    console.log(i);
       if(listNotes[i].id === note.id){
         listNotes[i] = note;
         break;
       }
   }
-  localStorage.setItem(note.id, JSON.stringify(note));
+  storageNotes.remplace(listNotes);
 };
 
 const noteStorageRemove = (id) => {
   listNotes = listNotes.filter(n => n.id != id);
-  localStorage.removeItem(id);
+  storageNotes.remplace(listNotes);
 };
 
+const noteStorageRemoves = (param) => {
+  listNotes = listNotes.filter(param);
+  storageNotes.remplace(listNotes);
+}
+
 const endNumberStorage = (notes) => {
-  if (notes.length > 1) {
+  if (notes.length > 0) {
     let biggerNumber = notes[0].number;
     notes.forEach((note) => {
       if (biggerNumber < note.number) biggerNumber = note.number;
     });
     return biggerNumber;
   }
-  return 0;
+  return -1;
 };
 
 const noteStoragePush = (state,text) => {
   const note  = {
     id: Date.now(),
     complete: state,
-    number: endNumberStorage(listNotes),
+    number: endNumberStorage(listNotes) + 1,
     text
   }
   listNotes.push(note);
-  localStorage.setItem(note.id, JSON.stringify(note));
+  storageNotes.remplace(listNotes);
   return note;
 };
 
@@ -74,15 +104,11 @@ const countNotes = (param) => {
 }
 //note control
 
-const delateTodo = (buttonDelate) => {
-  let todoItem;
-  do {
-    todoItem = buttonDelate.parentElement;
-  } while (todoItem.nodeName != "LI");
-  if(!noteStorageGet(todoItem.dataset.id).complete)
+const delateTodo = (noteElement) => {
+  if(!noteStorageGet(noteElement.dataset.id).complete)
     count.textContent = parseInt(count.textContent) - 1;
-  noteStorageRemove(todoItem.dataset.id);
-  todoItem.remove();
+  noteStorageRemove(noteElement.dataset.id);
+  noteElement.remove();
 };
 
 const paintNotes = () => {
@@ -106,10 +132,10 @@ const paintNotes = () => {
   //procedemos a crear cada nota
   noteList.forEach((note) => {
     const clone = document.importNode(element.content, true),
-      li = clone.querySelector("li"),
-      text = li.querySelector(".todo-note__text");
-    li.setAttribute("data-id", note.id);
-    changeStateElement(li, note.complete);
+      noteElement = clone.querySelector("li"),
+      text = noteElement.querySelector(".todo-note__text");
+    noteElement.setAttribute("data-id", note.id);
+    setStateElement(noteElement, note.complete);
     text.textContent = note.text;
     fragment.appendChild(clone);
   });
@@ -119,10 +145,9 @@ const paintNotes = () => {
   list.appendChild(fragment);
   console.log('se pintaron')
 };
-
-const changeStateElement = (elementNote, state) => {
-  const text = elementNote.querySelector(".todo-note__text");
-  const chek = elementNote.querySelector(".todo-note__chek");
+const setStateElement = ( noteElement, state ) => {
+  const text = noteElement.querySelector(".todo-note__text");
+  const chek = noteElement.querySelector(".todo-note__chek");
   if (state) {
     chek.classList.add("todo-note__chek--completed");
     text.classList.add("todo-note__text--completed");
@@ -130,6 +155,16 @@ const changeStateElement = (elementNote, state) => {
     chek.classList.remove("todo-note__chek--completed");
     text.classList.remove("todo-note__text--completed");
   }
+}
+const changeStateElement = (noteElement) => {
+  const note = noteStorageGet(noteElement.dataset.id);
+  note.complete = !note.complete;
+  noteStorageSet(note.complete);
+  if(note.complete)
+      count.textContent = parseInt(count.textContent) - 1; 
+   else
+      count.textContent = parseInt(count.textContent) + 1;
+  setStateElement(noteElement,note.complete);
 };
 
 //creacion de una nota
@@ -148,6 +183,15 @@ inputComplete.addEventListener("change", () => {
 });
 //cargamos las notas
 document.addEventListener("DOMContentLoaded", (e) => {
+  statePage = localStorageManager('page');
+  if(statePage.data() == null){
+    const page = {
+      color:true
+    }
+    statePage.remplace(page);
+    console.log(statePage.data())
+  }
+  changeColorPage(statePage.data().color);
   //guardamos las notas del storage en el listNotes;
   noteStorageLoad();
   let hash = location.hash.replace("#", "");
@@ -160,41 +204,13 @@ document.addEventListener("DOMContentLoaded", (e) => {
 //evento sobre la lista (remover o cabiar state de la nota)
 list.addEventListener("click", (e) => {
   const element = e.target;
+  let noteElement = element.closest('.todo-note');
   if (element.classList.contains("todo-note__delate")) {
-    delateTodo(element);
+    delateTodo( noteElement );
   } else {
-    let buttonChek = element;
-    if (buttonChek.classList.contains("todo-note__chek")) {
-      let todoItem;
-      do {
-        todoItem = buttonChek.parentElement;
-      } while (todoItem.nodeName != "LI");
-      const note = noteStorageGet(todoItem.dataset.id);
-      const state = note.complete;
-      note.complete = !state;
-      noteStorageSet(note);
-      if(note.complete)
-          count.textContent = parseInt(count.textContent) - 1; 
-      else
-          count.textContent = parseInt(count.textContent) + 1;
-      changeStateElement(todoItem, note.complete);
-    } else {
-      buttonChek = buttonChek.parentElement;
-      if (buttonChek.classList.contains("todo-note__chek")) {
-        let todoItem;
-        do {
-          todoItem = buttonChek.parentElement;
-        } while (todoItem.nodeName != "LI");
-        const note = noteStorageGet(todoItem.dataset.id);
-        const state = note.complete;
-        note.complete = !state;
-        noteStorageSet(note);
-        if(note.complete)
-          count.textContent = parseInt(count.textContent) - 1; 
-        else
-          count.textContent = parseInt(count.textContent) + 1;
-        changeStateElement(todoItem, note.complete);
-      }
+    let buttonChek = element.closest('.todo-note__chek');1
+    if (buttonChek != null) {
+      changeStateElement(noteElement);
     }
   }
 });
@@ -219,16 +235,14 @@ optionCompleted.addEventListener("click", () => {
 });
 
 clearCompleted.addEventListener('click',()=>{
-  
+  noteStorageRemoves(note => note.complete);
+  paintNotes();
 })
 
 // change color page
-
-buttonColor.addEventListener("click", (e) => {
-  e.preventDefault();
+const changeColorPage = (state) => {
   const body = document.body;
-  const light = body.classList.contains("body--light");
-  if (light) {
+  if (state) {
     buttonColor.classList.toggle('button-change--down',false);
     buttonColor.classList.toggle('button-change--up',true);
     body.classList.add("body--dark");
@@ -239,4 +253,13 @@ buttonColor.addEventListener("click", (e) => {
     body.classList.add("body--light");
     body.classList.remove("body--dark");
   }
+}
+
+buttonColor.addEventListener("click", (e) => {
+  e.preventDefault();
+  const page = statePage.data();
+  page.color = !page.color;
+  statePage.remplace(page);
+  console.log(page);
+  changeColorPage(page.color);
 });
